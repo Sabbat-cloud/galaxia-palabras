@@ -1,0 +1,550 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Galaxia de Palabras Interactiva</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <!-- Añadir soporte para texto en Three.js -->
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/loaders/FontLoader.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/geometries/TextGeometry.js"></script>
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #000010;
+            font-family: 'Courier New', monospace;
+            color: #e0e0e0;
+        }
+        #container3d {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 1;
+        }
+        #ui-container {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            z-index: 2;
+            pointer-events: none;
+        }
+        #ui-container * {
+            pointer-events: auto;
+        }
+        .input-group {
+            position: absolute;
+            bottom: 80px;
+            left: 50%;
+            transform: translateX(-50%);
+            display: flex;
+            gap: 15px;
+            align-items: center;
+            background: rgba(20, 20, 30, 0.95);
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid #444;
+            backdrop-filter: blur(10px);
+        }
+        #text-input {
+            width: 400px;
+            height: 60px;
+            padding: 12px;
+            background: rgba(30, 30, 40, 0.9);
+            border: 1px solid #555;
+            border-radius: 8px;
+            color: white;
+            resize: none;
+            font-size: 14px;
+        }
+        #word-count {
+            width: 80px;
+            padding: 10px;
+            background: rgba(30, 30, 40, 0.9);
+            border: 1px solid #555;
+            border-radius: 6px;
+            color: white;
+            text-align: center;
+        }
+        #submit-btn {
+            padding: 12px 24px;
+            background: linear-gradient(45deg, #00aaff, #0077cc);
+            border: none;
+            border-radius: 8px;
+            color: white;
+            cursor: pointer;
+            transition: all 0.3s;
+            font-weight: bold;
+        }
+        #submit-btn:hover {
+            transform: scale(1.05);
+            box-shadow: 0 0 20px rgba(0, 170, 255, 0.4);
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-size: 14px;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            max-width: 300px;
+            backdrop-filter: blur(5px);
+        }
+        #word-info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(20, 20, 30, 0.9);
+            padding: 15px;
+            border-radius: 8px;
+            border: 1px solid #444;
+            max-width: 250px;
+            display: none;
+            backdrop-filter: blur(5px);
+        }
+        #word-info h3 {
+            margin: 0 0 10px 0;
+            color: #00aaff;
+            font-size: 18px;
+        }
+        #word-info p {
+            margin: 5px 0;
+            font-size: 14px;
+        }
+        .loading {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            color: #00aaff;
+            font-size: 20px;
+            display: none;
+            text-align: center;
+        }
+        .control-info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            font-size: 12px;
+            background: rgba(20, 20, 30, 0.8);
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 250px;
+            backdrop-filter: blur(5px);
+        }
+        .stats {
+            position: absolute;
+            bottom: 20px;
+            right: 20px;
+            font-size: 12px;
+            background: rgba(20, 20, 30, 0.8);
+            padding: 12px;
+            border-radius: 8px;
+            max-width: 200px;
+            backdrop-filter: blur(5px);
+        }
+    </style>
+</head>
+<body>
+
+    <div id="container3d"></div>
+    <div id="loading" class="loading">🌌 Generando galaxia...<br><span style="font-size: 14px;">Esto puede tomar unos segundos</span></div>
+
+    <div id="ui-container">
+        <div id="info">✨ Pega un texto y elige cuántas palabras mostrar en la galaxia</div>
+        <div id="word-info"></div>
+
+        <form id="textForm" class="input-group">
+            <textarea id="text-input" placeholder="Pega tu texto aquí..."></textarea>
+            <div>
+                <label for="word-count" style="display: block; margin-bottom: 8px; font-size: 12px; color: #00aaff;">Palabras a mostrar:</label>
+                <input type="number" id="word-count" min="5" max="200" value="50">
+            </div>
+            <button id="submit-btn" type="submit">🚀 Generar</button>
+        </form>
+
+        <div class="control-info">
+            <strong>🎮 Controles:</strong><br>
+            • Click y arrastrar: Rotar<br>
+            • Rueda del ratón: Zoom<br>
+            • Click en planeta: Ver detalles
+        </div>
+
+        <div class="stats" id="stats" style="display: none;">
+            <strong>📊 Estadísticas:</strong><br>
+            <span id="stats-content"></span>
+        </div>
+    </div>
+
+    <script>
+        // --- Variables globales ---
+        let scene, camera, renderer, galaxyGroup;
+        let raycaster, mouse;
+        let stars = [];
+        let textSprites = [];
+        let isDragging = false;
+        let previousMousePosition = { x: 0, y: 0 };
+        let currentGalaxyData = [];
+        let font; // Para almacenar la fuente de texto
+
+        // --- Inicialización 3D ---
+        function init3D() {
+            scene = new THREE.Scene();
+
+            // Añadir luz ambiental para mejor visualización
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+
+            // Añadir luz direccional para sombras y profundidad
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 0.8);
+            directionalLight.position.set(1, 1, 1);
+            scene.add(directionalLight);
+
+            camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 1000);
+            renderer = new THREE.WebGLRenderer({
+                antialias: true,
+                alpha: true,
+                powerPreference: "high-performance"
+            });
+
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.setPixelRatio(window.devicePixelRatio);
+            document.getElementById('container3d').appendChild(renderer.domElement);
+
+            galaxyGroup = new THREE.Group();
+            scene.add(galaxyGroup);
+
+            // Posición inicial de la cámara más lejos para ver toda la galaxia
+            camera.position.z = 150;
+
+            // Configurar raycaster para detección de clics
+            raycaster = new THREE.Raycaster();
+            mouse = new THREE.Vector2();
+
+            // Cargar fuente para el texto
+            const fontLoader = new THREE.FontLoader();
+            fontLoader.load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json', function(loadedFont) {
+                font = loadedFont;
+                console.log("Fuente cargada correctamente");
+            });
+
+            // Event listeners para interacción
+            setupEventListeners();
+
+            animate();
+        }
+
+        function setupEventListeners() {
+            // Rotación con mouse
+            renderer.domElement.addEventListener('mousedown', onMouseDown);
+            renderer.domElement.addEventListener('mousemove', onMouseMove);
+            renderer.domElement.addEventListener('mouseup', onMouseUp);
+            renderer.domElement.addEventListener('click', onMouseClick);
+
+            // Zoom con rueda del mouse
+            renderer.domElement.addEventListener('wheel', onMouseWheel);
+
+            // Redimensionado
+            window.addEventListener('resize', onWindowResize);
+        }
+
+        function onMouseDown(event) {
+            isDragging = true;
+            previousMousePosition = {
+                x: event.clientX,
+                y: event.clientY
+            };
+            renderer.domElement.style.cursor = 'grabbing';
+        }
+
+        function onMouseMove(event) {
+            if (isDragging) {
+                const deltaMove = {
+                    x: event.clientX - previousMousePosition.x,
+                    y: event.clientY - previousMousePosition.y
+                };
+
+                galaxyGroup.rotation.y += deltaMove.x * 0.005;
+                galaxyGroup.rotation.x += deltaMove.y * 0.005;
+
+                previousMousePosition = {
+                    x: event.clientX,
+                    y: event.clientY
+                };
+            }
+        }
+
+        function onMouseUp() {
+            isDragging = false;
+            renderer.domElement.style.cursor = 'grab';
+        }
+
+        function onMouseClick(event) {
+            mouse.x = (event.clientX / window.innerWidth) * 2 - 1;
+            mouse.y = - (event.clientY / window.innerHeight) * 2 + 1;
+
+            raycaster.setFromCamera(mouse, camera);
+            const intersects = raycaster.intersectObjects(stars);
+
+            if (intersects.length > 0) {
+                const star = intersects[0].object;
+                showWordInfo(star.userData);
+
+                // Efecto visual al seleccionar
+                star.material.emissive = new THREE.Color(0x00aaff);
+                star.material.emissiveIntensity = 0.5;
+
+                setTimeout(() => {
+                    star.material.emissiveIntensity = 0;
+                }, 1000);
+            }
+        }
+
+        function onMouseWheel(event) {
+            event.preventDefault();
+            camera.position.z += event.deltaY * 0.2;
+            camera.position.z = Math.max(80, Math.min(300, camera.position.z));
+        }
+
+        function onWindowResize() {
+            camera.aspect = window.innerWidth / window.innerHeight;
+            camera.updateProjectionMatrix();
+            renderer.setSize(window.innerWidth, window.innerHeight);
+        }
+
+        function animate() {
+            requestAnimationFrame(animate);
+
+            // Rotación suave automática (más lenta)
+            if (!isDragging) {
+                galaxyGroup.rotation.x += 0.0001;
+                galaxyGroup.rotation.y += 0.0002;
+            }
+
+            // Hacer que las etiquetas de texto siempre miren hacia la cámara (billboarding)
+            updateTextSprites();
+
+            renderer.render(scene, camera);
+        }
+
+        // Función para actualizar los sprites de texto para que siempre miren a la cámara
+        function updateTextSprites() {
+            textSprites.forEach(sprite => {
+                // Método 1: Usar lookAt (más preciso pero puede girar el texto)
+                // sprite.lookAt(camera.position);
+                
+                // Método 2: Billboarding simple - siempre orientado hacia la cámara
+                // sin rotar el texto (solución mejorada)
+                sprite.quaternion.copy(camera.quaternion);
+            });
+        }
+
+        // --- Creación de la galaxia ---
+        function createGalaxy(galaxyData) {
+            console.log("Creando galaxia con distribución optimizada");
+
+            // Limpiar galaxia anterior
+            clearGalaxy();
+            stars = [];
+            textSprites = [];
+
+            // Calcular estadísticas para mostrar
+            const totalWords = galaxyData.reduce((sum, item) => sum + item.count, 0);
+            const maxCount = Math.max(...galaxyData.map(item => item.count));
+
+            // Mostrar estadísticas
+            showStats(galaxyData.length, totalWords, maxCount);
+
+            // Crear estrellas
+            galaxyData.forEach(item => {
+                createStar(item);
+            });
+
+            console.log("Galaxia creada con distribución esférica optimizada");
+        }
+
+        function createStar(item) {
+            // Material con emisividad para efecto de brillo
+            const material = new THREE.MeshPhongMaterial({
+                color: new THREE.Color(item.color),
+                emissive: new THREE.Color(item.color).multiplyScalar(0.2),
+                transparent: true,
+                opacity: 0.95,
+                shininess: 100
+            });
+
+            const geometry = new THREE.SphereGeometry(item.size / 2, 24, 24);
+            const star = new THREE.Mesh(geometry, material);
+
+            star.position.set(item.x, item.y, item.z);
+            star.userData = item;
+
+            galaxyGroup.add(star);
+            stars.push(star);
+
+            // Crear etiqueta de texto para la palabra
+            createTextLabel(item);
+        }
+
+        function createTextLabel(item) {
+            if (!font) {
+                console.warn("La fuente no está cargada todavía");
+                // Intentar cargar la fuente de nuevo si no está disponible
+                const fontLoader = new THREE.FontLoader();
+                fontLoader.load('https://cdn.jsdelivr.net/npm/three@0.128.0/examples/fonts/helvetiker_regular.typeface.json', function(loadedFont) {
+                    font = loadedFont;
+                    createTextLabel(item); // Reintentar crear la etiqueta
+                });
+                return;
+            }
+
+            // Configuración del texto
+            const textGeometry = new THREE.TextGeometry(item.word, {
+                font: font,
+                size: Math.max(item.size / 4, 1.5),  // Tamaño proporcional al planeta con mínimo de 1.5
+                height: 0.1,
+                curveSegments: 4,
+                bevelEnabled: false
+            });
+
+            // Centrar el texto
+            textGeometry.computeBoundingBox();
+            const centerOffset = -0.5 * (textGeometry.boundingBox.max.x - textGeometry.boundingBox.min.x);
+            textGeometry.translate(centerOffset, 0, 0);
+
+            // Material para el texto (mismo color que el planeta pero más brillante)
+            const textMaterial = new THREE.MeshBasicMaterial({ 
+                color: new THREE.Color(item.color).multiplyScalar(1.5),
+                transparent: true,
+                opacity: 0.95
+            });
+
+            const textMesh = new THREE.Mesh(textGeometry, textMaterial);
+            
+            // Posicionar el texto ligeramente encima del planeta
+            textMesh.position.set(item.x, item.y + item.size + 2, item.z);
+            textMesh.userData = item;
+            
+            // Hacer que el texto siempre mire hacia la cámara (billboarding)
+            textMesh.lookAt = function(cameraPosition) {
+                this.quaternion.setFromUnitVectors(
+                    new THREE.Vector3(0, 0, 1),
+                    new THREE.Vector3().subVectors(this.position, cameraPosition).normalize()
+                );
+            };
+            
+            galaxyGroup.add(textMesh);
+            textSprites.push(textMesh);
+        }
+
+        function clearGalaxy() {
+            while(galaxyGroup.children.length > 0){
+                galaxyGroup.remove(galaxyGroup.children[0]);
+            }
+            stars = [];
+            textSprites = [];
+        }
+
+        function showWordInfo(wordData) {
+            const infoDiv = document.getElementById('word-info');
+            const totalWords = currentGalaxyData.reduce((sum, item) => sum + item.count, 0);
+            const frequencyPercent = ((wordData.count / totalWords) * 100).toFixed(1);
+
+            infoDiv.innerHTML = `
+                <h3>${wordData.word}</h3>
+                <p>📊 Frecuencia: ${wordData.count} veces (${frequencyPercent}%)</p>
+                <p>🔍 Tamaño: ${wordData.size.toFixed(1)}</p>
+                <p>📍 Posición: (${wordData.x.toFixed(1)}, ${wordData.y.toFixed(1)}, ${wordData.z.toFixed(1)})</p>
+            `;
+            infoDiv.style.display = 'block';
+
+            setTimeout(() => {
+                infoDiv.style.display = 'none';
+            }, 8000);
+        }
+
+        function showStats(wordCount, totalWords, maxCount) {
+            const statsDiv = document.getElementById('stats');
+            const statsContent = document.getElementById('stats-content');
+
+            statsContent.innerHTML = `
+                Palabras: ${wordCount}<br>
+                Total apariciones: ${totalWords}<br>
+                Máxima frecuencia: ${maxCount}
+            `;
+            statsDiv.style.display = 'block';
+        }
+
+        // --- Comunicación con backend ---
+        document.getElementById('textForm').addEventListener('submit', async function(event) {
+            event.preventDefault();
+
+            const text = document.getElementById('text-input').value;
+            const wordCount = parseInt(document.getElementById('word-count').value);
+            const info = document.getElementById('info');
+            const loading = document.getElementById('loading');
+
+            if (!text.trim()) {
+                info.textContent = '⚠️ Por favor, introduce algún texto.';
+                return;
+            }
+
+            if (wordCount < 5 || wordCount > 200) {
+                info.textContent = '⚠️ El número de palabras debe estar entre 5 y 200.';
+                return;
+            }
+
+            info.textContent = '⏳ Procesando texto...';
+            loading.style.display = 'block';
+
+            try {
+                const formData = new URLSearchParams();
+                formData.append('text', text);
+                formData.append('word_count', wordCount);
+
+                const response = await fetch('/process', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/x-www-form-urlencoded',
+                    },
+                    body: formData
+                });
+
+                if (!response.ok) {
+                    throw new Error('Error en el servidor: ' + response.status);
+                }
+
+                const galaxyData = await response.json();
+                currentGalaxyData = galaxyData;
+
+                if (galaxyData.length === 0) {
+                    throw new Error('No se pudieron procesar las palabras');
+                }
+
+                info.textContent = `✅ Galaxia generada con ${galaxyData.length} palabras.`;
+                createGalaxy(galaxyData);
+
+            } catch (error) {
+                console.error('Error:', error);
+                info.textContent = '❌ Error: ' + error.message;
+            } finally {
+                loading.style.display = 'none';
+            }
+        });
+
+        // Validación del input de número
+        document.getElementById('word-count').addEventListener('change', function() {
+            let value = parseInt(this.value);
+            if (value < 5) this.value = 5;
+            if (value > 200) this.value = 200;
+        });
+
+        // Inicializar la aplicación
+        init3D();
+
+    </script>
+
+</body>
+</html>
