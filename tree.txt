@@ -1,8 +1,0 @@
-idea-codestral/
-├── app-mistral.py
-├── download_nltk.py
-├── nltk_data/
-│   └── tokenizers/
-│       └── punkt_tab/
-└── templates/
-    └── index.html

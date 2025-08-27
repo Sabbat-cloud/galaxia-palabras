@@ -543,7 +543,17 @@
 
         // Inicializar la aplicación
         init3D();
-
+	
+	// Cargar texto preprocesado si está disponible
+	{% if preprocessed_text %}
+		document.getElementById('text-input').value = `{{ preprocessed_text }}`;
+    		document.getElementById('word-count').value = {{ preprocessed_word_count }};
+    
+    	// Enviar automáticamente el formulario
+    	setTimeout(() => {
+        	document.getElementById('submit-btn').click();
+    		}, 1000);
+	{% endif %}
     </script>
 
 </body>

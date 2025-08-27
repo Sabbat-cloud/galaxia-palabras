@@ -1,7 +1,9 @@
 🌌 Galaxia de Palabras Interactiva
 Una aplicación web interactiva que transforma textos en una galaxia 3D de palabras, donde cada planeta representa una palabra y su tamaño corresponde a su frecuencia en el texto.
 
-https://img.shields.io/badge/Visualizaci%C3%B3n-3D%2520Interactiva-blueviolet https://img.shields.io/badge/Tecnolog%C3%ADa-Python%2520%252B%2520Three.js-green https://img.shields.io/badge/Licencia-MIT-lightgrey
+https://img.shields.io/badge/Visualizaci%C3%B3n-3D%2520Interactiva-blueviolet
+https://img.shields.io/badge/Tecnolog%C3%ADa-Python%2520%252B%2520Three.js-green
+https://img.shields.io/badge/Licencia-MIT-lightgrey
 
 ✨ Características
 Visualización 3D: Representación espacial de palabras como planetas en una galaxia
@@ -14,6 +16,10 @@ Etiquetas inteligentes: Texto siempre orientado hacia la cámara para mejor legi
 
 Interfaz elegante: Diseño oscuro con efectos visuales atractivos
 
+Modo línea de comandos: Procesamiento de archivos directamente desde la terminal
+
+Soporte para grandes textos: Capaz de procesar novelas completas y documentos extensos
+
 🛠️ Tecnologías Utilizadas
 Backend
 Python 3 con Flask
@@ -21,6 +27,8 @@ Python 3 con Flask
 NLTK para procesamiento de lenguaje natural
 
 Tokenización y filtrado de stopwords en español e inglés
+
+Argument parsing para interfaz de línea de comandos
 
 Frontend
 Three.js para visualización 3D en el navegador
@@ -43,7 +51,7 @@ Clona el repositorio:
 bash
 git clone https://github.com/Sabbat-cloud/galaxia-palabras.git
 cd galaxia-palabras
-Crea un entorno virtual y activa:
+Crea un entorno virtual y actívalo:
 
 bash
 python -m venv venv
@@ -57,17 +65,26 @@ pip install -r requirements.txt
 Descarga los recursos de NLTK (se descargan automáticamente en el primer uso)
 
 Ejecución
-Inicia el servidor Flask:
-
+Modo interactivo (servidor web)
 bash
-python app-mistral.py
-Abre tu navegador y ve a:
+python galaxia-palabras.py
+Modo línea de comandos (procesamiento directo)
+bash
+# Procesar un archivo con 50 palabras (valor por defecto)
+python galaxia-palabras.py mi_archivo.txt
+
+# Procesar un archivo con un número específico de palabras
+python galaxia-palabras.py mi_archivo.txt -n 100
+
+# Procesar una novela completa
+python galaxia-palabras.py quijote.txt -n 150
+Acceso a la aplicación
+Después de ejecutar el comando, abre tu navegador y ve a:
 
 text
 http://localhost:3558
-Pega tu texto, ajusta el número de palabras y haz clic en "🚀 Generar"
-
 🎮 Cómo Usar
+Interfaz web
 Introduce texto: Pega cualquier texto en el área de texto
 
 Configura: Selecciona cuántas palabras quieres visualizar (5-200)
@@ -82,10 +99,17 @@ Haz clic en cualquier planeta para ver detalles de la palabra
 
 Analiza: Observa las estadísticas de frecuencia y distribución
 
+Línea de comandos
+Procesa archivos de texto directamente sin necesidad de copiar y pegar
+
+Especifica el número de palabras a visualizar con el parámetro -n o --num-palabras
+
+Soporte para archivos de gran tamaño (novelas, documentos extensos)
+
 🏗️ Estructura del Proyecto
 text
 galaxia-palabras/
-├── app-mistral.py          # Servidor Flask principal
+├── galaxia-palabras.py     # Servidor Flask principal con soporte para CLI
 ├── requirements.txt        # Dependencias de Python
 ├── nltk_data/             # Recursos de NLP (se crea automáticamente)
 ├── templates/
@@ -105,7 +129,7 @@ item.x, item.y, item.z: Distribución espacial
 Propiedades de materiales y colores
 
 Configurar procesamiento de texto
-En app-mistral.py, modifica la función process_text() para:
+En galaxia-palabras.py, modifica la función process_text() para:
 
 Cambiar el número máximo de palabras
 
@@ -121,6 +145,8 @@ Estudio de discursos: Analizar frecuencia de palabras en speeches
 SEO content: Identificar palabras clave en textos
 
 Educación: Enseñar procesamiento de lenguaje natural de forma visual
+
+Procesamiento por lotes: Analizar múltiples archivos mediante scripts
 
 🤝 Contribuir
 Las contribuciones son bienvenidas. Para contribuir:
@@ -164,3 +190,9 @@ Análisis de sentimiento integrado
 Comparación entre múltiples textos
 
 Integración con APIs de procesamiento de lenguaje
+
+Soporte para más idiomas
+
+Modo offline para procesamiento local
+
+Nota: Este proyecto ahora soporta procesamiento de archivos directamente desde la línea de comandos, haciendo más fácil analizar grandes volúmenes de texto como novelas completas o documentos extensos.
